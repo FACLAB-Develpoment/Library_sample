@@ -1,3 +1,8 @@
+// Direct2D를 구성하는 각종 객체를 생성하는 Factory객체
+ID2D1Factory *gp_factory;
+// WIC(Windows Imaging Component)관련 객체를 생성하기 위한 Factory 객체
+IWICImagingFactory *gp_wic_factory;
+
 class TW_WinApp
 {
 protected:
@@ -65,5 +70,25 @@ public:
         }
         m_exit_state = msg.wParam;
     }
+}
+
+void TWAPI_CreateWIC();
+int TWAPI_MakeD2D1_Bitmap(IWICBitmapFrameDecode *ap_image_frame, ID2D1HwndRenderTarget *ap_target, ID2D1Bitmap **ap_bitmap)
+{
+    IWICFormatConverter *pConverter;
+    int result_flag = 0;
+
+    if (S_OK == a_pWicFactory->CreateFormatConverter(&pConverter)) // WICBitmap 형식을 ID2D1Bitmap으로 변환용 객체 생성
+    {
+        if (S_OK == pConverter->Initialize(ap_image_frame, GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone, NULL, 0.0f, WICBitmapPaletteTypeCustom))
+        {
+            //IWICBitmap 형식으로 ID2D1Bitmap 객체 생성
+            if (S_OK == g_pRenderTarget->CreateBitmapFromWicBitmap(pConverter, NULL, &ap_bitmap)) result_flag = 1;
+        }
+        pConverter->Release();
+    } return result_flag;
+}
+int TWAPI_LoadImage(ID2D1HwndRenderTarget *ap_target, ID2D1Bitmap **ap_bitmap, const wchar_t *ap_path)
+{
 
 }
