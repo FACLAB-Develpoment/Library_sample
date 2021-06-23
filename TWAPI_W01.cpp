@@ -56,3 +56,48 @@ void TW_WinApp::Run()  //Message 처리
     }
     m_exit_state = msg.wParam;
 }
+
+int TWAPI_MakeD2D1_Bitmap(IWICBitmapFrameDecode *ap_image_frame, ID2D1HwndRenderTarget *ap_target, ID2D1Bitmap **ap_bitmap)
+{
+	IWICFormatConverter *p_converter; // 이미지 변환 객체
+	int result = 0;
+	// IWICBitmap형식의 비트맵을 ID2D1Bitmap. 형식으로 변환하기 위한 객체 생성
+	if (S_OK == gp_wic_factory->CreateFormatConverter(&p_converter)) {
+		// 선택된 그림을 어떤 형식의 비트맵으로 변환할 것인지 설정한다.
+		if (S_OK == p_converter->Initialize(ap_image_frame, GUID_WICPixelFormat32bppPBGRA, 
+							WICBitmapDitherTypeNone, NULL, 0.0f, WICBitmapPaletteTypeCustom)) {
+			// IWICBitmap 형식의 비트맵으로 ID2D1Bitmap 객체를 생성한다.
+			if (S_OK == ap_target->CreateBitmapFromWicBitmap(p_converter, NULL, ap_bitmap)) {
+				result = 1;  // 성공적으로 생성한 경우
+			}
+		}
+		TW_IRelease(&p_converter);  // 이미지 변환 객체 제거
+	}
+	return result;
+}
+
+int TWAPI_LoadImage(ID2D1HwndRenderTarget *ap_target, ID2D1Bitmap **ap_bitmap, const wchar_t *ap_path)
+{
+	// WIC(Windows Imaging Component)관련 객체를 생성하기 위한 Factory 객체 선언
+	if (gp_wic_factory == NULL) TWAPI_CreateWIC();
+	// WIC 객체를 생성하기 위한 Factory 객체를 생성한다.
+	//CoCreateInstance(CLSID_WICImagingFactory, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&p_wic_factory));
+
+	IWICBitmapDecoder *p_decoder;     // 압축된 이미지를 해제할 객체
+	IWICBitmapFrameDecode *p_frame;   // 특정 그림을 선택한 객체
+	int result = 0;  // 그림 파일을 읽은 결과 값 (0이면 그림 읽기 실패, 1이면 그림 읽기 성공)
+	// WIC용 Factory 객체를 사용하여 이미지 압축 해제를 위한 객체를 생성
+	if (S_OK == gp_wic_factory->CreateDecoderFromFilename(ap_path, NULL, GENERIC_READ, 
+											WICDecodeMetadataCacheOnDemand, &p_decoder)) {
+		// 파일을 구성하는 이미지 중에서 첫번째 이미지를 선택한다.
+		if (S_OK == p_decoder->GetFrame(0, &p_frame)) {
+			// 그림의 크기에 맞도록 Target의 크기를 재조정한다.
+			ResizeTarget(p_frame);  
+			// IWICBitmap 정보를 사용하여 D2D1Bitmap을 만든다.
+			result = TWAPI_MakeD2D1_Bitmap(p_frame, ap_target, ap_bitmap);
+			TW_IRelease(&p_frame);   // 그림파일에 있는 이미지를 선택하기 위해 사용한 객체 제거
+		}
+		TW_IRelease(&p_decoder);     // 압축을 해제하기 위해 생성한 객체 제거
+	}
+	return result;  // PNG 파일을 읽은 결과를 반환한다.
+}
