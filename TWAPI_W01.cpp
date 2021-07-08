@@ -101,3 +101,79 @@ int TWAPI_LoadImage(ID2D1HwndRenderTarget *ap_target, ID2D1Bitmap **ap_bitmap, c
 	}
 	return result;  // PNG 파일을 읽은 결과를 반환한다.
 }
+//***************************************************************
+// TW_wnd Functions
+
+// 윈도우를 파괴할 때 사용하는 함수
+void DestoryWindow()
+{
+	if (mh_wnd != NULL) 
+	:: DestroyWindow(mh_wnd);
+}
+// 윈도우를 갱신을 대기하지 않고 즉시 갱신하도록 하는 함수
+void UpdateWindow()
+{
+	::UpdateWindow(mh_wnd);
+}
+// 윈도우를 화면에 어떻게 출력시킬 것인지를 결정하는 함수
+void ShowWindow(int a_show_type = SW_SHOW)
+{
+	::ShowWindow(mh_wnd, a_show_type);
+}
+
+void ResizeWindow(HWND ah_wnd, int a_width, int a_height)
+{
+	RECT client_rect, win_rect;
+	::GetClientRect(ah_wnd, &client_rect);  // 현재 윈도우의 클라이언트 영역의 좌표를 얻는다.
+	::GetWindowRect(ah_wnd, &win_rect);		// 그림의 크기에 맞게 윈도우 크기를 변경하기 위해서 윈도우 좌표를 얻는다.
+	::SetWindowPos(ah_wnd, NULL, 0, 0, win_rect.right - win_rect.left + (int)(g_image_rect.right) - client_rect.right,
+			win_rect.bottom - win_rect.top + (int)(g_image_rect.bottom) - client_rect.bottom, SWP_NOMOVE);
+			// 클라이언트 영역의 크기와 그림 크기의 차이를 계산하여 윈도우 크기를 재조정한다.
+}
+
+// 윈도우 화면을 무효화 시켜서 WM_PAINT 메시지를 발생시키는 함수
+void Invalidate()
+{
+	::InvalidateRect(mh_wnd, NULL, FALSE);
+}
+// 타이머를 등록하는 함수
+void SetTimer(UINT a_timer_id, UINT a_elapse_time)
+{
+	::SetTimer(mh_wnd, a_timer_id, a_elapse_time, NULL);
+}
+// 타이머를 제거하는 함수
+void KillTimer(UINT a_timer_id)
+{
+	::KillTimer(mh_wnd, a_timer_id);
+}
+
+// WM_PAINT 메시지가 발생할 때 작업할 함수. 이 함수는 파생 클래스에서 대부분 재정의 함
+virtual void OnPaint()
+{
+
+}
+
+virtual int OnCreate(CREATESTRUCT *ap_create_info)
+{
+	RECT client_rect;
+	GetClientRect(mh_wnd, &client_rect);  // 클라이언트 영역의 좌표를 얻는다.
+
+    // 지정한 윈도우의 클라이언트 영역에 그림을 그리기 위한 Render Target을 생성한다.
+	gp_factory->CreateHwndRenderTarget(RenderTargetProperties(),
+		HwndRenderTargetProperties(ah_wnd, SizeU(client_rect.right, client_rect.bottom)),
+		&gp_target);
+
+	return 0;
+}
+// WM_TIMER 메시지가 발생할 때 작업할 함수.
+virtual void OnTimer(UINT a_timer_id)
+{
+
+}
+// WM_DESTROY 메시지가 발생할 때 작업할 함수. Render Target 객체를 제거하는 작업과
+// WM_QUIT 메시지를 발생시키는 작업은 매번 해야 하는 작업이라서 여기서 처리함.
+virtual void OnDestroy()
+{
+	TW_IRelease(&mp_target); //사용하던 Render target 제거
+	PostQuitMessage(0); // WM_QUIT를 Message Que에 insert 해서 Program Out.
+}
